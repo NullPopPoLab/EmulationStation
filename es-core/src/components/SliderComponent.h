@@ -1,10 +1,12 @@
 #pragma once
+#ifndef ES_CORE_COMPONENTS_SLIDER_COMPONENT_H
+#define ES_CORE_COMPONENTS_SLIDER_COMPONENT_H
 
-#include "GuiComponent.h"
 #include "components/ImageComponent.h"
+#include "GuiComponent.h"
 
-class TextCache;
 class Font;
+class TextCache;
 
 // Used to display/edit a value between some min and max values.
 class SliderComponent : public GuiComponent
@@ -15,14 +17,18 @@ public:
 
 	void setValue(float val);
 	float getValue();
+	std::string getSuffix() {return mSuffix; }
 
 	bool input(InputConfig* config, Input input) override;
 	void update(int deltaTime) override;
-	void render(const Eigen::Affine3f& parentTrans) override;
+	void render(const Transform4x4f& parentTrans) override;
 	
 	void onSizeChanged() override;
 	
 	virtual std::vector<HelpPrompt> getHelpPrompts() override;
+	virtual void setColor(unsigned int color);
+
+	inline void setOnValueChanged(const std::function<void(const float&)>& callback) { mValueChanged = callback; }
 
 private:
 	void onValueChanged();
@@ -32,10 +38,15 @@ private:
 	float mSingleIncrement;
 	float mMoveRate;
 	int mMoveAccumulator;
+	unsigned int mColor;
 
 	ImageComponent mKnob;
 
 	std::string mSuffix;
 	std::shared_ptr<Font> mFont;
 	std::shared_ptr<TextCache> mValueCache;
+
+	std::function<void(const float&)> mValueChanged;
 };
+
+#endif // ES_CORE_COMPONENTS_SLIDER_COMPONENT_H

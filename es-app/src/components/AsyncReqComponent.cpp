@@ -1,5 +1,8 @@
 #include "components/AsyncReqComponent.h"
-#include "Renderer.h"
+
+#include "renderers/Renderer.h"
+#include "HttpReq.h"
+#include "LocaleES.h"
 
 AsyncReqComponent::AsyncReqComponent(Window* window, std::shared_ptr<HttpReq> req, std::function<void(std::shared_ptr<HttpReq>)> onSuccess, std::function<void()> onCancel) 
 	: GuiComponent(window), 
@@ -10,7 +13,7 @@ AsyncReqComponent::AsyncReqComponent(Window* window, std::shared_ptr<HttpReq> re
 
 bool AsyncReqComponent::input(InputConfig* config, Input input)
 {
-	if(input.value != 0 && config->isMappedTo("b", input))
+	if(input.value != 0 && config->isMappedTo(BUTTON_BACK, input))
 	{
 		if(mCancelFunc)
 			mCancelFunc();
@@ -33,19 +36,19 @@ void AsyncReqComponent::update(int deltaTime)
 	mTime += deltaTime;
 }
 
-void AsyncReqComponent::render(const Eigen::Affine3f& parentTrans)
+void AsyncReqComponent::render(const Transform4x4f& /*parentTrans*/)
 {
-	Eigen::Affine3f trans = Eigen::Affine3f::Identity();
-	trans = trans.translate(Eigen::Vector3f(Renderer::getScreenWidth() / 2.0f, Renderer::getScreenHeight() / 2.0f, 0));
+	Transform4x4f trans = Transform4x4f::Identity();
+	trans = trans.translate(Vector3f(Renderer::getScreenWidth() / 2.0f, Renderer::getScreenHeight() / 2.0f, 0));
 	Renderer::setMatrix(trans);
 
-	Eigen::Vector3f point(cos(mTime * 0.01f) * 12, sin(mTime * 0.01f) * 12, 0);
-	Renderer::drawRect((int)point.x(), (int)point.y(), 8, 8, 0x0000FFFF);
+	Vector3f point(Math::cosf(mTime * 0.01f) * 12, Math::sinf(mTime * 0.01f) * 12, 0);
+	Renderer::drawRect(point.x(), point.y(), 8.0f, 8.0f, 0x0000FFFF, 0x0000FFFF);
 }
 
 std::vector<HelpPrompt> AsyncReqComponent::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
-	prompts.push_back(HelpPrompt("b", "cancel"));
+	prompts.push_back(HelpPrompt(BUTTON_BACK, _("CANCEL")));
 	return prompts;
 }

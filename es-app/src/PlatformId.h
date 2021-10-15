@@ -1,5 +1,8 @@
 #pragma once
+#ifndef ES_APP_PLATFORM_ID_H
+#define ES_APP_PLATFORM_ID_H
 
+#include <string>
 #include <map>
 
 namespace PlatformIds
@@ -34,15 +37,23 @@ namespace PlatformIds
 		NEOGEO_POCKET_COLOR,
 		NINTENDO_3DS,
 		NINTENDO_64,
+		NINTENDO_64_DISK_DRIVE,
 		NINTENDO_DS,
+		FAMICOM_DISK_SYSTEM,
 		NINTENDO_ENTERTAINMENT_SYSTEM,
 		GAME_BOY,
 		GAME_BOY_ADVANCE,
 		GAME_BOY_COLOR,
+		SUPER_GAME_BOY,
 		NINTENDO_GAMECUBE,
 		NINTENDO_WII,
 		NINTENDO_WII_U,
+		NINTENDO_SWITCH,
+		NINTENDO_VIRTUAL_BOY,
+		NINTENDO_GAME_AND_WATCH,
 		PC,
+		PC_88,
+		PC_98,
 		SEGA_32X,
 		SEGA_CD,
 		SEGA_DREAMCAST,
@@ -51,24 +62,93 @@ namespace PlatformIds
 		SEGA_MASTER_SYSTEM,
 		SEGA_MEGA_DRIVE,
 		SEGA_SATURN,
+		SEGA_SG1000,
 		PLAYSTATION,
 		PLAYSTATION_2,
 		PLAYSTATION_3,
 		PLAYSTATION_4,
 		PLAYSTATION_VITA,
 		PLAYSTATION_PORTABLE,
+		QUAKE,
 		SUPER_NINTENDO,
-		TURBOGRAFX_16, // (also PC Engine)
+		SCUMMVM,
+		SHARP_X1,
+		SHARP_X6800,
+		TURBOGRAFX_16, // (aka PC Engine) HuCards only
+		TURBOGRAFX_CD, // (aka PC Engine) CD-ROMs only
 		WONDERSWAN,
 		WONDERSWAN_COLOR,
 		ZX_SPECTRUM,
+		VIDEOPAC_ODYSSEY2,
+		VECTREX,
+		TRS80_COLOR_COMPUTER,
+		TANDY,		
+		SUPERGRAFX,
+		AMIGACD32,
+		AMIGACDTV,
+		ATOMISWAVE,
+		CAVESTORY,
+		GX4000,
+		LUTRO,
+		MOONLIGHT,
+		MRBOOM,
+		SONIC,
+		CANNONBALL,
+		NAOMI,
+		NEOGEO_CD,
+		PCFX,
+		POKEMINI,
+		PRBOOM,
+		SATELLAVIEW,
+		SUFAMITURBO,
+		ZX81,
+		TIC80,
+		MODEL3,
+		IMAGEVIEWER,
+
+		// Windows Specific
+		VISUALPINBALL,
+		FUTUREPINBALL,
+
+		// Misc systems
+		CHANNELF,
+		ORICATMOS,
+		THOMSON_TO_MO,
+		SAMCOUPE,
+		OPENBOR,
+		UZEBOX,
+		APPLE2GS,
+		SPECTRAVIDEO,
+		PALMOS,
+		DAPHNE,
+		SOLARUS,
+		PICO8,
+		WATARA_SUPERVISION,
+
+		VIC20,
+		TI99,
+		SUPER_CASSETTE_VISION,
+		EASYRPG,
+		COMMODORE_PET,
+		ACORN_ATOM,
+		ACORN_BBC_MICRO,
+		ACORN_ELECTRON,		
+		NOKIA_NGAGE,
+		ASTROCADE,
+		ARCHIMEDES,
+		ADAM,
+		FMTOWNS,		
+		PHILIPS_CDI,
+		SUPER_NINTENDO_MSU1,
 
 		PLATFORM_IGNORE, // do not allow scraping for this system
 		PLATFORM_COUNT
 	};
 
-	PlatformId getPlatformId(const char* str);
-	const char* getPlatformName(PlatformId id);
+	PlatformId		getPlatformId(const char* str);
+	std::string		getPlatformName(PlatformId id);
 
-	const char* getCleanMameName(const char* from);
+	extern std::map<unsigned short, std::pair<std::string, std::string>> ArcadeSystems;
 }
+
+#endif // ES_APP_PLATFORM_ID_H

@@ -1,10 +1,9 @@
 #include "InputConfig.h"
-#include <string>
-#include <algorithm>
-#include <SDL.h>
-#include <iostream>
+
 #include "Log.h"
-#include "InputManager.h"
+#include <pugixml/src/pugixml.hpp>
+#include "Settings.h"
+
 
 //some util functions
 std::string inputTypeToString(InputType type)
@@ -19,6 +18,8 @@ std::string inputTypeToString(InputType type)
 		return "hat";
 	case TYPE_KEY:
 		return "key";
+	case TYPE_CEC_BUTTON:
+		return "cec-button";
 	default:
 		return "error";
 	}
@@ -34,6 +35,8 @@ InputType stringToInputType(const std::string& type)
 		return TYPE_HAT;
 	if(type == "key")
 		return TYPE_KEY;
+	if(type == "cec-button")
+		return TYPE_CEC_BUTTON;
 	return TYPE_COUNT;
 }
 
@@ -42,15 +45,16 @@ std::string toLower(std::string str)
 {
 	for(unsigned int i = 0; i < str.length(); i++)
 	{
-		str[i] = tolower(str[i]);
+		str[i] = (char)tolower(str[i]);
 	}
 
 	return str;
 }
 //end util functions
 
-InputConfig::InputConfig(int deviceId, const std::string& deviceName, const std::string& deviceGUID) : mDeviceId(deviceId), mDeviceName(deviceName), mDeviceGUID(deviceGUID)
+InputConfig::InputConfig(int deviceId, int deviceIndex, const std::string& deviceName, const std::string& deviceGUID, int deviceNbButtons, int deviceNbHats, int deviceNbAxes) : mDeviceId(deviceId), mDeviceIndex(deviceIndex), mDeviceName(deviceName), mDeviceGUID(deviceGUID), mDeviceNbButtons(deviceNbButtons), mDeviceNbHats(deviceNbHats), mDeviceNbAxes(deviceNbAxes)  // batocera
 {
+	mBatteryLevel = -1;
 }
 
 void InputConfig::clear()
@@ -71,14 +75,14 @@ void InputConfig::mapInput(const std::string& name, Input input)
 void InputConfig::unmapInput(const std::string& name)
 {
 	auto it = mNameMap.find(toLower(name));
-	if(it != mNameMap.end())
+	if(it != mNameMap.cend())
 		mNameMap.erase(it);
 }
 
 bool InputConfig::getInputByName(const std::string& name, Input* result)
 {
 	auto it = mNameMap.find(toLower(name));
-	if(it != mNameMap.end())
+	if(it != mNameMap.cend())
 	{
 		*result = it->second;
 		return true;
@@ -87,12 +91,15 @@ bool InputConfig::getInputByName(const std::string& name, Input* result)
 	return false;
 }
 
-bool InputConfig::isMappedTo(const std::string& name, Input input)
+bool InputConfig::isMappedTo(const std::string& name, Input input, bool reversedAxis) // batocera
 {
 	Input comp;
-	if(!getInputByName(name, &comp))
+	if (!getInputByName(name, &comp))
 		return false;
-	
+
+	if(reversedAxis) { // batocera
+	  comp.value *= -1;
+	}
 	if(comp.configured && comp.type == input.type && comp.id == input.id)
 	{
 		if(comp.type == TYPE_HAT)
@@ -110,12 +117,27 @@ bool InputConfig::isMappedTo(const std::string& name, Input input)
 	return false;
 }
 
+bool InputConfig::isMappedLike(const std::string& name, Input input) // batocera
+{
+	if(name == "left")
+	{
+	  return isMappedTo("left", input) || isMappedTo("joystick1left", input); // batocera
+	}else if(name == "right"){
+	  return isMappedTo("right", input) || isMappedTo("joystick1left", input, true); // batocera
+	}else if(name == "up"){
+	  return isMappedTo("up", input) || isMappedTo("joystick1up", input); // batocera
+	}else if(name == "down"){
+	  return isMappedTo("down", input) || isMappedTo("joystick1up", input, true); // batocera
+	}
+	return isMappedTo(name, input);
+}
+
 std::vector<std::string> InputConfig::getMappedTo(Input input)
 {
 	std::vector<std::string> maps;
 
-	typedef std::map<std::string, Input>::iterator it_type;
-	for(it_type iterator = mNameMap.begin(); iterator != mNameMap.end(); iterator++)
+	typedef std::map<std::string, Input>::const_iterator it_type;
+	for(it_type iterator = mNameMap.cbegin(); iterator != mNameMap.cend(); iterator++)
 	{
 		Input chk = iterator->second;
 
@@ -146,7 +168,7 @@ std::vector<std::string> InputConfig::getMappedTo(Input input)
 	return maps;
 }
 
-void InputConfig::loadFromXML(pugi::xml_node node)
+void InputConfig::loadFromXML(pugi::xml_node& node)
 {
 	clear();
 
@@ -172,7 +194,7 @@ void InputConfig::loadFromXML(pugi::xml_node node)
 	}
 }
 
-void InputConfig::writeToXML(pugi::xml_node parent)
+void InputConfig::writeToXML(pugi::xml_node& parent)
 {
 	pugi::xml_node cfg = parent.append_child("inputConfig");
 
@@ -180,15 +202,22 @@ void InputConfig::writeToXML(pugi::xml_node parent)
 	{
 		cfg.append_attribute("type") = "keyboard";
 		cfg.append_attribute("deviceName") = "Keyboard";
-	}else{
+	}
+	else if(mDeviceId == DEVICE_CEC)
+	{
+		cfg.append_attribute("type") = "cec";
+		cfg.append_attribute("deviceName") = "CEC";
+	}
+	else
+	{
 		cfg.append_attribute("type") = "joystick";
 		cfg.append_attribute("deviceName") = mDeviceName.c_str();
 	}
 
 	cfg.append_attribute("deviceGUID") = mDeviceGUID.c_str();
 
-	typedef std::map<std::string, Input>::iterator it_type;
-	for(it_type iterator = mNameMap.begin(); iterator != mNameMap.end(); iterator++)
+	typedef std::map<std::string, Input>::const_iterator it_type;
+	for(it_type iterator = mNameMap.cbegin(); iterator != mNameMap.cend(); iterator++)
 	{
 		if(!iterator->second.configured)
 			continue;
@@ -199,4 +228,61 @@ void InputConfig::writeToXML(pugi::xml_node parent)
 		input.append_attribute("id").set_value(iterator->second.id);
 		input.append_attribute("value").set_value(iterator->second.value);
 	}
+}
+
+static char ABUTTON[2] = "a";
+static char BBUTTON[2] = "b";
+
+char* BUTTON_OK = ABUTTON;
+char* BUTTON_BACK = BBUTTON;
+
+std::string InputConfig::buttonLabel(const std::string& button)
+{
+#ifdef INVERTEDINPUTCONFIG
+	if (!Settings::getInstance()->getBool("InvertButtons"))
+	{
+		if (button == "a")
+			return "b";
+		else if (button == "b")
+			return "a";
+	}
+#endif
+
+	return button;
+}
+
+std::string InputConfig::buttonImage(const std::string& button)
+{
+#ifdef INVERTEDINPUTCONFIG
+	if (!Settings::getInstance()->getBool("InvertButtons"))
+	{
+		if (button == "a")
+			return ":/help/buttons_south.svg";		
+		if (button == "b")
+			return ":/help/buttons_east.svg";
+	}
+#endif
+	if (button == "a")
+		return ":/help/buttons_east.svg";
+	if (button == "b")
+		return ":/help/buttons_south.svg";
+	if (button == "x")
+		return ":/help/buttons_north.svg";
+	if (button == "y")
+		return ":/help/buttons_west.svg";
+	
+	return button;
+}
+
+void InputConfig::AssignActionButtons()
+{
+	bool invertButtons = Settings::getInstance()->getBool("InvertButtons");
+	
+#ifdef INVERTEDINPUTCONFIG
+	BUTTON_OK = invertButtons ? BBUTTON : ABUTTON;
+	BUTTON_BACK = invertButtons ? ABUTTON : BBUTTON;
+#else
+	BUTTON_OK = invertButtons ? ABUTTON : BBUTTON;
+	BUTTON_BACK = invertButtons ? BBUTTON : ABUTTON;
+#endif
 }

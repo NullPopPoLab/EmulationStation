@@ -1,18 +1,19 @@
 #pragma once
+#ifndef ES_APP_VIEWS_GAME_LIST_IGAME_LIST_VIEW_H
+#define ES_APP_VIEWS_GAME_LIST_IGAME_LIST_VIEW_H
 
+#include "renderers/Renderer.h"
 #include "FileData.h"
-#include "Renderer.h"
+#include "GuiComponent.h"
 
-class Window;
-class GuiComponent;
-class FileData;
 class ThemeData;
+class Window;
 
 // This is an interface that defines the minimum for a GameListView.
 class IGameListView : public GuiComponent
 {
 public:
-	IGameListView(Window* window, FileData* root) : GuiComponent(window), mRoot(root)
+	IGameListView(Window* window, FolderData* root) : GuiComponent(window), mRoot(root)
 		{ setSize((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight()); }
 
 	virtual ~IGameListView() {}
@@ -31,12 +32,24 @@ public:
 	virtual FileData* getCursor() = 0;
 	virtual void setCursor(FileData*) = 0;
 
-	virtual bool input(InputConfig* config, Input input) override;
+	virtual void remove(FileData* game) = 0;
 
 	virtual const char* getName() const = 0;
+	virtual void launch(FileData* game) = 0;
 
 	virtual HelpStyle getHelpStyle() override;
+
+	void render(const Transform4x4f& parentTrans) override;
+	virtual void setThemeName(std::string name);
+
+	virtual std::vector<std::string> getEntriesLetters() = 0;
+
+	virtual void repopulate() = 0;
+
 protected:
-	FileData* mRoot;
+	FolderData* mRoot;
 	std::shared_ptr<ThemeData> mTheme;
+	std::string mCustomThemeName;
 };
+
+#endif // ES_APP_VIEWS_GAME_LIST_IGAME_LIST_VIEW_H

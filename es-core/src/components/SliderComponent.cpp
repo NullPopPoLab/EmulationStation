@@ -1,9 +1,7 @@
 #include "components/SliderComponent.h"
-#include <assert.h>
-#include "Renderer.h"
+
 #include "resources/Font.h"
-#include "Log.h"
-#include "Util.h"
+#include "LocaleES.h"
 
 #define MOVE_REPEAT_DELAY 500
 #define MOVE_REPEAT_RATE 40
@@ -13,34 +11,48 @@ SliderComponent::SliderComponent(Window* window, float min, float max, float inc
 {
 	assert((min - max) != 0);
 
+	auto menuTheme = ThemeData::getMenuTheme();
+	mColor = menuTheme->Text.color;
+
 	// some sane default value
 	mValue = (max + min) / 2;
 
 	mKnob.setOrigin(0.5f, 0.5f);
-	mKnob.setImage(":/slider_knob.svg");
+	mKnob.setImage(ThemeData::getMenuTheme()->Icons.knob);
+	mKnob.setColorShift(mColor);
 	
-	setSize(Renderer::getScreenWidth() * 0.15f, Font::get(FONT_SIZE_MEDIUM)->getLetterHeight());
+	if (Renderer::isSmallScreen())
+		setSize(Renderer::getScreenWidth() * 0.25f, menuTheme->Text.font->getLetterHeight());
+	else
+		setSize(Renderer::getScreenWidth() * 0.15f, menuTheme->Text.font->getLetterHeight());
+}
+
+void SliderComponent::setColor(unsigned int color) 
+{
+	mColor = color;
+	mKnob.setColorShift(mColor);
+	onValueChanged();
 }
 
 bool SliderComponent::input(InputConfig* config, Input input)
 {
-	if(config->isMappedTo("left", input))
+	if(config->isMappedLike("left", input))
 	{
 		if(input.value)
 			setValue(mValue - mSingleIncrement);
 
 		mMoveRate = input.value ? -mSingleIncrement : 0;
 		mMoveAccumulator = -MOVE_REPEAT_DELAY;
-		return true;
+		return input.value;
 	}
-	if(config->isMappedTo("right", input))
+	if(config->isMappedLike("right", input))
 	{
 		if(input.value)
 			setValue(mValue + mSingleIncrement);
 
 		mMoveRate = input.value ? mSingleIncrement : 0;
 		mMoveAccumulator = -MOVE_REPEAT_DELAY;
-		return true;
+		return input.value;
 	}
 
 	return GuiComponent::input(config, input);
@@ -61,9 +73,13 @@ void SliderComponent::update(int deltaTime)
 	GuiComponent::update(deltaTime);
 }
 
-void SliderComponent::render(const Eigen::Affine3f& parentTrans)
+void SliderComponent::render(const Transform4x4f& parentTrans)
 {
-	Eigen::Affine3f trans = roundMatrix(parentTrans * getTransform());
+	Transform4x4f trans = parentTrans * getTransform();
+
+	if (!Renderer::isVisibleOnScreen(trans.translation().x(), trans.translation().y(), mSize.x(), mSize.y()))
+		return;
+
 	Renderer::setMatrix(trans);
 
 	// render suffix
@@ -74,7 +90,7 @@ void SliderComponent::render(const Eigen::Affine3f& parentTrans)
 
 	//render line
 	const float lineWidth = 2;
-	Renderer::drawRect(mKnob.getSize().x() / 2, mSize.y() / 2 - lineWidth / 2, width, lineWidth, 0x777777FF);
+	Renderer::drawRect(mKnob.getSize().x() / 2, mSize.y() / 2 - lineWidth / 2, width, lineWidth, mColor);
 
 	//render knob
 	mKnob.render(trans);
@@ -84,6 +100,9 @@ void SliderComponent::render(const Eigen::Affine3f& parentTrans)
 
 void SliderComponent::setValue(float value)
 {
+	if (mValue == value)
+		return;
+
 	mValue = value;
 	if(mValue < mMin)
 		mValue = mMin;
@@ -91,6 +110,9 @@ void SliderComponent::setValue(float value)
 		mValue = mMax;
 
 	onValueChanged();
+
+	if (mValueChanged)
+		mValueChanged(mValue);
 }
 
 float SliderComponent::getValue()
@@ -126,20 +148,21 @@ void SliderComponent::onValueChanged()
 		ss << mSuffix;
 		const std::string max = ss.str();
 
-		Eigen::Vector2f textSize = mFont->sizeText(max);
-		mValueCache = std::shared_ptr<TextCache>(mFont->buildTextCache(val, mSize.x() - textSize.x(), (mSize.y() - textSize.y()) / 2, 0x777777FF));
+		Vector2f textSize = mFont->sizeText(max);
+		mValueCache = std::shared_ptr<TextCache>(mFont->buildTextCache(val, mSize.x() - textSize.x(), (mSize.y() - textSize.y()) / 2, mColor));
 		mValueCache->metrics.size[0] = textSize.x(); // fudge the width
 	}
 
 	// update knob position/size
 	mKnob.setResize(0, mSize.y() * 0.7f);
 	float lineLength = mSize.x() - mKnob.getSize().x() - (mValueCache ? mValueCache->metrics.size.x() + 4 : 0);
-	mKnob.setPosition(((mValue + mMin) / mMax) * lineLength + mKnob.getSize().x()/2, mSize.y() / 2);
+	mKnob.setPosition(((mValue + mMin) / mMax) * lineLength /*+ mKnob.getSize().x()/2*/, mSize.y() / 2);
+
 }
 
 std::vector<HelpPrompt> SliderComponent::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
-	prompts.push_back(HelpPrompt("left/right", "change"));
+	prompts.push_back(HelpPrompt("left/right", _("CHANGE"))); // batocera
 	return prompts;
 }

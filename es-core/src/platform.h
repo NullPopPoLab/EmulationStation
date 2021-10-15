@@ -1,24 +1,50 @@
-//the Makefile defines one of these:
-//#define USE_OPENGL_ES
-//#define USE_OPENGL_DESKTOP
-
-#ifdef USE_OPENGL_ES
-	#define GLHEADER <GLES/gl.h>
-#endif
-
-#ifdef USE_OPENGL_DESKTOP
-	//why the hell this naming inconsistency exists is well beyond me
-	#ifdef WIN32
-		#define sleep Sleep
-	#endif
-
-	#define GLHEADER <SDL_opengl.h>
-#endif
+#pragma once
+#ifndef ES_CORE_PLATFORM_H
+#define ES_CORE_PLATFORM_H
 
 #include <string>
 
-std::string getHomePath();
+#ifdef WIN32
+#include <Windows.h>
+#include <intrin.h>
 
-int runShutdownCommand(); // shut down the system (returns 0 if successful)
-int runRestartCommand(); // restart the system (returns 0 if successful)
-int runSystemCommand(const std::string& cmd_utf8); // run a utf-8 encoded in the shell (requires wstring conversion on Windows)
+#define sleep Sleep
+#endif
+
+class Window;
+
+enum QuitMode
+{
+	QUIT = 0,
+	RESTART = 1,
+	SHUTDOWN = 2,
+	REBOOT = 3,
+	FAST_SHUTDOWN = 4,
+	FAST_REBOOT = 5
+};
+
+int runSystemCommand(const std::string& cmd_utf8, const std::string& name, Window* window); // run a utf-8 encoded in the shell (requires wstring conversion on Windows)
+int quitES(QuitMode mode = QuitMode::QUIT);
+bool isFastShutdown();
+void processQuitMode();
+
+struct BatteryInformation
+{
+	BatteryInformation()
+	{
+		hasBattery = false;
+		level = 0;
+		isCharging = false;
+	}
+
+	bool hasBattery;
+	int  level;
+	bool isCharging;
+};
+
+BatteryInformation queryBatteryInformation();
+std::string queryIPAdress();
+
+std::string getArchString();
+
+#endif // ES_CORE_PLATFORM_H

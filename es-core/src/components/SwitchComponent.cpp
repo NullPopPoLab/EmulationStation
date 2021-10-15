@@ -1,13 +1,27 @@
 #include "SwitchComponent.h"
-#include "Renderer.h"
+
 #include "resources/Font.h"
-#include "Window.h"
+#include "LocaleES.h"
 
 SwitchComponent::SwitchComponent(Window* window, bool state) : GuiComponent(window), mImage(window), mState(state)
 {
-	mImage.setImage(":/off.svg");
-	mImage.setResize(0, Font::get(FONT_SIZE_MEDIUM)->getLetterHeight());
+	auto menuTheme = ThemeData::getMenuTheme();
+
+	float height = Font::get(FONT_SIZE_MEDIUM)->getLetterHeight();
+
+	mImage.setImage(ThemeData::getMenuTheme()->Icons.off);
+	mImage.setResize(0, height);
+	mImage.setColorShift(menuTheme->Text.color);
+
+	if (EsLocale::isRTL())
+		mImage.setFlipX(true);
+
 	mSize = mImage.getSize();
+}
+
+void SwitchComponent::setColor(unsigned int color) 
+{
+	mImage.setColorShift(color);
 }
 
 void SwitchComponent::onSizeChanged()
@@ -17,9 +31,23 @@ void SwitchComponent::onSizeChanged()
 
 bool SwitchComponent::input(InputConfig* config, Input input)
 {
-	if(config->isMappedTo("a", input) && input.value)
+	if(config->isMappedTo(BUTTON_OK, input) && input.value)
 	{
 		mState = !mState;
+		onStateChanged();
+		return true;
+	}
+
+	if (config->isMappedLike("left", input) && input.value && mState)
+	{
+		mState = false;
+		onStateChanged();
+		return true;
+	}
+
+	if (config->isMappedLike("right", input) && input.value && !mState)
+	{
+		mState = true;
 		onStateChanged();
 		return true;
 	}
@@ -27,9 +55,9 @@ bool SwitchComponent::input(InputConfig* config, Input input)
 	return false;
 }
 
-void SwitchComponent::render(const Eigen::Affine3f& parentTrans)
+void SwitchComponent::render(const Transform4x4f& parentTrans)
 {
-	Eigen::Affine3f trans = parentTrans * getTransform();
+	Transform4x4f trans = parentTrans * getTransform();
 	
 	mImage.render(trans);
 
@@ -44,17 +72,44 @@ bool SwitchComponent::getState() const
 void SwitchComponent::setState(bool state)
 {
 	mState = state;
+	mInitialState = mState; // batocera
+	onStateChanged();
+}
+
+std::string SwitchComponent::getValue() const
+{
+	return mState ?  "true" : "false";
+}
+
+void SwitchComponent::setValue(const std::string& statestring)
+{
+	if (statestring == "true")
+	{
+		mState = true;
+	}else
+	{
+		mState = false;
+	}
 	onStateChanged();
 }
 
 void SwitchComponent::onStateChanged()
 {
-	mImage.setImage(mState ? ":/on.svg" : ":/off.svg");
+	auto theme = ThemeData::getMenuTheme();
+	mImage.setImage(mState ? theme->Icons.on : theme->Icons.off);
+
+	if (mOnChangedCallback != nullptr)
+		mOnChangedCallback();
 }
 
 std::vector<HelpPrompt> SwitchComponent::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
-	prompts.push_back(HelpPrompt("a", "change"));
+	prompts.push_back(HelpPrompt(BUTTON_OK, _("CHANGE")));
 	return prompts;
+}
+
+// batocera
+bool SwitchComponent::changed() {
+	return mInitialState != mState;
 }

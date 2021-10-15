@@ -1,6 +1,11 @@
-#include "GuiComponent.h"
+#pragma once
+#ifndef ES_CORE_COMPONENTS_BUSY_COMPONENT_H
+#define ES_CORE_COMPONENTS_BUSY_COMPONENT_H
+
 #include "components/ComponentGrid.h"
 #include "components/NinePatchComponent.h"
+#include "GuiComponent.h"
+#include <SDL_mutex.h> // batocera
 
 class AnimatedImageComponent;
 class TextComponent;
@@ -8,11 +13,18 @@ class TextComponent;
 class BusyComponent : public GuiComponent
 {
 public:
-	BusyComponent(Window* window);
-
+	BusyComponent(Window* window, const std::string& text = "__default__");
+	~BusyComponent(); // batocera
+  
 	void onSizeChanged() override;
+	void setText(std::string txt); // batocera
 
 	void reset(); // reset to frame 0
+	
+	void render(const Transform4x4f& parentTrans) override;
+	void update(int deltaTime) override;
+
+	void setBackgroundVisible(bool visible);
 
 private:
 	NinePatchComponent mBackground;
@@ -20,4 +32,11 @@ private:
 
 	std::shared_ptr<AnimatedImageComponent> mAnimation;
 	std::shared_ptr<TextComponent> mText;
+
+        // batocera
+	SDL_mutex *mutex;
+	bool threadMessagechanged;
+	std::string threadMessage;
 };
+
+#endif // ES_CORE_COMPONENTS_BUSY_COMPONENT_H

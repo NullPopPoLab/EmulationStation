@@ -1,8 +1,10 @@
 #include "BusyComponent.h"
 
 #include "components/AnimatedImageComponent.h"
+#include "components/ImageComponent.h"
 #include "components/TextComponent.h"
-#include "Renderer.h"
+#include "LocaleES.h"
+#include "PowerSaver.h"
 
 // animation definition
 AnimationFrame BUSY_ANIMATION_FRAMES[] = {
@@ -13,14 +15,22 @@ AnimationFrame BUSY_ANIMATION_FRAMES[] = {
 };
 const AnimationDef BUSY_ANIMATION_DEF = { BUSY_ANIMATION_FRAMES, 4, true };
 
-using namespace Eigen;
-
-BusyComponent::BusyComponent(Window* window) : GuiComponent(window),
+BusyComponent::BusyComponent(Window* window, const std::string& text) : GuiComponent(window),
 	mBackground(window, ":/frame.png"), mGrid(window, Vector2i(5, 3))
 {
+	threadMessagechanged = false;
+
+	auto theme = ThemeData::getMenuTheme();
+	mBackground.setImagePath(theme->Background.path);
+	mBackground.setEdgeColor(theme->Background.color);
+	mBackground.setCenterColor(theme->Background.centerColor);
+	mBackground.setCornerSize(theme->Background.cornerSize);
+    
+	mutex = SDL_CreateMutex(); // batocera
 	mAnimation = std::make_shared<AnimatedImageComponent>(mWindow);
 	mAnimation->load(&BUSY_ANIMATION_DEF);
-	mText = std::make_shared<TextComponent>(mWindow, "WORKING...", Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
+	
+	mText = std::make_shared<TextComponent>(mWindow, text == "__default__" ? _("WORKING...") : text, ThemeData::getMenuTheme()->Text.font, ThemeData::getMenuTheme()->Text.color); // batocera
 
 	// col 0 = animation, col 1 = spacer, col 2 = text
 	mGrid.setEntry(mAnimation, Vector2i(1, 1), false, true);
@@ -28,6 +38,54 @@ BusyComponent::BusyComponent(Window* window) : GuiComponent(window),
 
 	addChild(&mBackground);
 	addChild(&mGrid);
+
+	PowerSaver::pause();
+}
+
+void BusyComponent::setBackgroundVisible(bool visible)
+{
+	mBackground.setVisible(visible);
+}
+
+void BusyComponent::update(int deltaTime)
+{
+	GuiComponent::update(deltaTime);	
+	// mAnimation->setRotation(mAnimation->getRotation() - (deltaTime / 333.3));
+}
+
+BusyComponent::~BusyComponent() 
+{
+	PowerSaver::resume();
+	SDL_DestroyMutex(mutex);
+}
+
+void BusyComponent::setText(std::string txt)
+{
+	if (SDL_LockMutex(mutex) == 0)
+	{
+		if (threadMessage != txt)
+		{
+			threadMessage = txt;
+			threadMessagechanged = true;
+		}
+
+		SDL_UnlockMutex(mutex);
+	}
+}
+
+void BusyComponent::render(const Transform4x4f& parentTrans)
+{
+	if (SDL_LockMutex(mutex) == 0)
+	{
+		if (threadMessagechanged) 
+		{
+			threadMessagechanged = false;
+			mText->setText(threadMessage);
+			onSizeChanged();
+		}
+		SDL_UnlockMutex(mutex);
+	}
+	GuiComponent::render(parentTrans);
 }
 
 void BusyComponent::onSizeChanged()

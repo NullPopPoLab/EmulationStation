@@ -1,7 +1,11 @@
 #pragma once
+#ifndef ES_CORE_COMPONENTS_NINE_PATCH_COMPONENT_H
+#define ES_CORE_COMPONENTS_NINE_PATCH_COMPONENT_H
 
+#include "renderers/Renderer.h"
 #include "GuiComponent.h"
-#include "resources/TextureResource.h"
+
+class TextureResource;
 
 // Display an image in a way so that edges don't get too distorted no matter the final size. Useful for UI elements like backgrounds, buttons, etc.
 // This is accomplished by splitting an image into 9 pieces:
@@ -20,11 +24,12 @@ public:
 	NinePatchComponent(Window* window, const std::string& path = "", unsigned int edgeColor = 0xFFFFFFFF, unsigned int centerColor = 0xFFFFFFFF);
 	virtual ~NinePatchComponent();
 
-	void render(const Eigen::Affine3f& parentTrans) override;
+	void render(const Transform4x4f& parentTrans) override;
+	void update(int deltaTime) override;
 
 	void onSizeChanged() override;
 
-	void fitTo(Eigen::Vector2f size, Eigen::Vector3f position = Eigen::Vector3f::Zero(), Eigen::Vector2f padding = Eigen::Vector2f::Zero());
+	void fitTo(Vector2f size, Vector3f position = Vector3f::Zero(), Vector2f padding = Vector2f::Zero());
 
 	void setImagePath(const std::string& path);
 	void setEdgeColor(unsigned int edgeColor); // Apply a color shift to the "edge" parts of the ninepatch.
@@ -32,23 +37,43 @@ public:
 
 	virtual void applyTheme(const std::shared_ptr<ThemeData>& theme, const std::string& view, const std::string& element, unsigned int properties) override;
 
-private:
-	Eigen::Vector2f getCornerSize() const;
+	const Vector2f& getCornerSize() const;
+	void setCornerSize(float sizeX, float sizeY);
+	inline void setCornerSize(const Vector2f& size) { setCornerSize(size.x(), size.y()); }
 
+	virtual void setOpacity(unsigned char opacity);
+
+	void setAnimateColor(unsigned int color) { mAnimateColor = color; };
+	void setAnimateTiming(float timing) { mAnimateTiming = timing; };
+
+	virtual void onShow() override;
+	virtual void onHide() override;
+
+	ThemeData::ThemeElement::Property getProperty(const std::string name) override;
+	void setProperty(const std::string name, const ThemeData::ThemeElement::Property& value) override;
+
+	Vector4f getPadding() { return mPadding; }
+	void setPadding(const Vector4f padding);
+
+private:
 	void buildVertices();
 	void updateColors();
 
-	struct Vertex
-	{
-		Eigen::Vector2f pos;
-		Eigen::Vector2f tex;
-	};
-
-	Vertex* mVertices;
-	GLubyte* mColors;
+	Renderer::Vertex* mVertices;
 
 	std::string mPath;
+	Vector2f mCornerSize;
 	unsigned int mEdgeColor;
 	unsigned int mCenterColor;
 	std::shared_ptr<TextureResource> mTexture;
+	
+	Vector2f mPreviousSize;
+
+
+	float mTimer;
+	float mAnimateTiming;
+	unsigned int mAnimateColor;	
+	Vector4f	 mPadding;
 };
+
+#endif // ES_CORE_COMPONENTS_NINE_PATCH_COMPONENT_H

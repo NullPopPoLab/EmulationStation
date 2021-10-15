@@ -1,10 +1,11 @@
 #pragma once
+#ifndef ES_CORE_RESOURCES_RESOURCE_MANAGER_H
+#define ES_CORE_RESOURCES_RESOURCE_MANAGER_H
 
-#include <stddef.h>
-#include <memory>
-#include <map>
 #include <list>
+#include <memory>
 #include <string>
+#include <vector>
 
 //The ResourceManager exists to...
 //Allow loading resources embedded into the executable like an actual file.
@@ -21,8 +22,8 @@ class ResourceManager;
 class IReloadable
 {
 public:
-	virtual void unload(std::shared_ptr<ResourceManager>& rm) = 0;
-	virtual void reload(std::shared_ptr<ResourceManager>& rm) = 0;
+	virtual bool unload() = 0;
+	virtual void reload() = 0;
 };
 
 class ResourceManager
@@ -31,9 +32,13 @@ public:
 	static std::shared_ptr<ResourceManager>& getInstance();
 
 	void addReloadable(std::weak_ptr<IReloadable> reloadable);
+	void removeReloadable(std::weak_ptr<IReloadable> reloadable);
 
 	void unloadAll();
 	void reloadAll();
+
+	std::string getResourcePath(const std::string& path) const;
+	std::vector<std::string> getResourcePaths() const;
 
 	const ResourceData getFileData(const std::string& path) const;
 	bool fileExists(const std::string& path) const;
@@ -43,7 +48,17 @@ private:
 
 	static std::shared_ptr<ResourceManager> sInstance;
 
-	ResourceData loadFile(const std::string& path) const;
+	ResourceData loadFile(const std::string& path, size_t size) const;
 
-	std::list< std::weak_ptr<IReloadable> > mReloadables;
+	class ReloadableInfo
+	{
+	public:
+		std::weak_ptr<IReloadable> data;
+		bool reload;
+		bool locked;
+	};
+
+	std::list<std::shared_ptr<ReloadableInfo>> mReloadables;
 };
+
+#endif // ES_CORE_RESOURCES_RESOURCE_MANAGER_H

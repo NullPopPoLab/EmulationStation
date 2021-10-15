@@ -1,52 +1,42 @@
-# NullPopPo-Custom
-[詳細](https://github.com/NullPopPoLab/EmulationStation/blob/master/!NullPopPo-Custom.md)
-
-以下、fork元
----
 EmulationStation
 ================
 
-A cross-platform graphical front-end for emulators with controller navigation.
-
-Project website: http://emulationstation.org
-
-**Raspberry Pi users:**
-A cool guy named petrockblog made a script which automatically installs many emulators and ES. It also includes options for configuring your RPi and setting it up to boot directly into ES. You can find it here: https://github.com/petrockblog/RetroPie-Setup
-
-Download
-========
-
-Download a pre-compiled version at [emulationstation.org](http://emulationstation.org#download).
-
-
-I found a bug! I have a problem!
-================================
-
-- First, try to check the [issue list](https://github.com/Aloshi/EmulationStation/issues?state=open) for some entries that might match your problem.  Make sure to check closed issues too!
-
-- If you're running EmulationStation on a on Raspberry Pi and have problems with config file changes not taking effect, content missing after editing, etc., check if your SD card is corrupted (see issues [#78](https://github.com/Aloshi/EmulationStation/issues/78) and [#107](https://github.com/Aloshi/EmulationStation/issues/107)). You can do this with free tools like [h2testw](http://www.heise.de/download/h2testw.html) or [F3](http://oss.digirati.com.br/f3/).
-
-- Try to update to the latest version of EmulationStation using git (you might need to delete your `es_input.cfg` and `es_settings.cfg` after that to reset them to default values):
-```bash
-cd YourEmulationStationDirectory
-git pull
-cmake .
-make
-```
-
-- If your problem still isn't gone, the best way to report a bug is to post an issue on GitHub. Try to post the simplest steps possible to reproduce the bug. Include files you think might be related (except for ROMs, of course). If you haven't re-run ES since the crash, the log file `~/.emulationstation/es_log.txt` is also helpful.
+EmulationStation is a cross-platform graphical front-end for emulators with controller navigation.
 
 Building
 ========
 
-EmulationStation uses some C++11 code, which means you'll need to use at least g++-4.7 on Linux, or VS2010 on Windows, to compile.
+EmulationStation uses some C++11 code, which means you'll need to use at least g++-4.7 on Linux, or Visual Studio 2015 on Windows, to compile.
 
-EmulationStation has a few dependencies. For building, you'll need CMake, SDL2, Boost (System, Filesystem, DateTime, Locale), FreeImage, FreeType, Eigen3, and cURL.  You also should probably install the `fonts-droid` package which contains fallback fonts for Chinese/Japanese/Korean characters, but ES will still work fine without it (this package is only used at run-time).
+EmulationStation has a few dependencies. For building, you'll need CMake, SDL2, FreeImage, FreeType, cURL, RapidJSON, LibVLC, SDLMixer.  You also should probably install the `fonts-droid` package which contains fallback fonts for Chinese/Japanese/Korean characters, but ES will still work fine without it (this package is only used at run-time).
 
 **On Debian/Ubuntu:**
-All of this be easily installed with apt-get:
+All of this be easily installed with `apt-get`:
 ```bash
-sudo apt-get install libsdl2-dev libboost-system-dev libboost-filesystem-dev libboost-date-time-dev libboost-locale-dev libfreeimage-dev libfreetype6-dev libeigen3-dev libcurl4-openssl-dev libasound2-dev libgl1-mesa-dev build-essential cmake fonts-droid
+sudo apt-get install libsdl2-dev libsdl2-mixer-dev libfreeimage-dev libfreetype6-dev \
+  libcurl4-openssl-dev rapidjson-dev libasound2-dev libgl1-mesa-dev build-essential \
+  libboost-all-dev cmake fonts-droid-fallback libvlc-dev libvlccore-dev vlc-bin
+```
+**On Fedora:**
+All of this be easily installed with `dnf` (with rpmfusion activated) :
+```bash
+sudo dnf install SDL2-devel freeimage-devel freetype-devel curl-devel \
+  alsa-lib-devel mesa-libGL-devel cmake \
+  vlc-devel rapidjson-devel 
+```
+
+Note this Repository uses a git submodule - to checkout the source and all submodules, use
+
+```bash
+git clone --recursive https://github.com/batocera-linux/batocera-emulationstation.git
+```
+
+or 
+
+```bash
+git clone https://github.com/batocera-linux/batocera-emulationstation.git
+cd EmulationStation
+git submodule update --init
 ```
 
 Then, generate and build the Makefile with CMake:
@@ -58,28 +48,41 @@ make
 
 **On the Raspberry Pi:**
 
-Complete Raspberry Pi build instructions at [emulationstation.org](http://emulationstation.org/gettingstarted.html#install_rpi_standalone).
+Complete Raspberry Pi build instructions at [emulationstation.org](http://emulationstation.org/gettingstarted.html#install_rpi_standalone). You'll still have to run the instructions for Debian/Ubuntu as mentioned above first.
+
+If the Pi uses the legacy/Broadcom driver, install the `libraspberry-dev` package before running `cmake` to configure the build.
+
+On the Pi 4 specifically, since the legacy GL drivers are not supported anymore, you must use the following command in place of the `cmake` command:
+```bash
+cmake -DUSE_MESA_GLES=On .
+```
 
 **On Windows:**
-
-[Boost](http://www.boost.org/users/download/) (you'll need to compile yourself or get the pre-compiled binaries)
-
-[Eigen3](http://eigen.tuxfamily.org/index.php?title=Main_Page) (header-only library)
 
 [FreeImage](http://downloads.sourceforge.net/freeimage/FreeImage3154Win32.zip)
 
 [FreeType2](http://download.savannah.gnu.org/releases/freetype/freetype-2.4.9.tar.bz2) (you'll need to compile)
 
-[SDL2](http://www.libsdl.org/release/SDL2-devel-2.0.3-VC.zip)
+[SDL2](http://www.libsdl.org/release/SDL2-devel-2.0.8-VC.zip)
 
 [cURL](http://curl.haxx.se/download.html) (you'll need to compile or get the pre-compiled DLL version)
 
-(Remember to copy necessary .DLLs into the same folder as the executable: probably FreeImage.dll, freetype6.dll, SDL2.dll, libcurl.dll, and zlib1.dll. Exact list depends on if you built your libraries in "static" mode or not.)
+[RapisJSON](https://github.com/tencent/rapidjson) (you'll need the `include/rapidsjon` added to the include path)
+
+[SDL Mixer](https://www.libsdl.org/projects/SDL_mixer/) 
+
+[LibVlc](http://download.videolan.org/pub/videolan/vlc/) (x86 sdk files are present in .7z files)
 
 [CMake](http://www.cmake.org/cmake/resources/software.html) (this is used for generating the Visual Studio project)
 
-(If you don't know how to use CMake, here are some hints: run cmake-gui and point it at your EmulationStation folder.  Point the "build" directory somewhere - I use EmulationStation/build.  Click configure, choose "Visual Studio [year] Project", fill in red fields as they appear and keep clicking Configure (you may need to check "Advanced"), then click Generate.)
+```
+set ES_LIB_DIR=c:\src\lib
 
+mkdir c:\src\batocera-emulationstation\build
+cd c:\src\batocera-emulationstation\build /D
+
+cmake -g "Visual Studio 14 2015 x86" .. -DEIGEN3_INCLUDE_DIR=%ES_LIB_DIR%\eigen -DRAPIDJSON_INCLUDE_DIRS=%ES_LIB_DIR%\rapidjson\include -DFREETYPE_INCLUDE_DIRS=%ES_LIB_DIR%\freetype-2.7\include -DFREETYPE_LIBRARY=%ES_LIB_DIR%\freetype-2.7\objs\vc2010\Win32\freetype27.lib -DFreeImage_INCLUDE_DIR=%ES_LIB_DIR%\FreeImage\Source -DFreeImage_LIBRARY=%ES_LIB_DIR%\FreeImage\Dist\x32\FreeImage.lib -DSDL2_INCLUDE_DIR=%ES_LIB_DIR%\SDL2-2.0.9\include -DSDL2_LIBRARY=%ES_LIB_DIR%\SDL2-2.0.9\build\Release\SDL2.lib;%ES_LIB_DIR%\SDL2-2.0.9\build\Release\SDL2main.lib;Imm32.lib;version.lib -DBOOST_ROOT=%ES_LIB_DIR%\boost_1_61_0 -DBoost_LIBRARY_DIR=%ES_LIB_DIR%\boost_1_61_0\lib32-msvc-14.0 -DCURL_INCLUDE_DIR=%ES_LIB_DIR%\curl-7.50.3\include -DCURL_LIBRARY=%ES_LIB_DIR%\curl-7.50.3\builds\libcurl-vc14-x86-release-dll-ipv6-sspi-winssl\lib\libcurl.lib -DVLC_INCLUDE_DIR=%ES_LIB_DIR%\libvlc-2.2.2\include -DVLC_LIBRARIES=%ES_LIB_DIR%\libvlc-2.2.2\lib\msvc\libvlc.lib;%ES_LIB_DIR%\libvlc-2.2.2\lib\msvc\libvlccore.lib -DVLC_VERSION=1.0.0 -DSDLMIXER_INCLUDE_DIR=%ES_LIB_DIR%\SDL2_mixer-2.0.4\include -DSDLMIXER_LIBRARY=%ES_LIB_DIR%\SDL2_mixer-2.0.4\lib\x86\SDL2_mixer.lib
+```
 
 Configuring
 ===========
@@ -109,15 +112,23 @@ The new configuration will be added to the `~/.emulationstation/es_input.cfg` fi
 
 You can use `--help` or `-h` to view a list of command-line options. Briefly outlined here:
 ```
---resolution [width] [height]	- try and force a particular resolution
---gamelist-only		- only display games defined in a gamelist.xml file.
---ignore-gamelist	- do not parse any gamelist.xml files.
---draw-framerate	- draw the framerate.
---no-exit		- do not display 'exit' in the ES menu.
---debug			- show the console window on Windows, do slightly more logging
---windowed	- run ES in a window, works best in conjunction with --resolution [w] [h].
---vsync [1/on or 0/off]	- turn vsync on or off (default is on).
---scrape	- run the interactive command-line metadata scraper.
+--resolution [width] [height]   try and force a particular resolution
+--gamelist-only                 skip automatic game search, only read from gamelist.xml
+--ignore-gamelist               ignore the gamelist (useful for troubleshooting)
+--draw-framerate                display the framerate
+--no-exit                       don't show the exit option in the menu
+--no-splash                     don't show the splash screen
+--debug                         more logging, show console on Windows
+--scrape                        scrape using command line interface
+--windowed                      not fullscreen, should be used with --resolution
+--fullscreen-borderless			fullscreen, non exclusive.
+--vsync [1/on or 0/off]         turn vsync on or off (default is on)
+--max-vram [size]               Max VRAM to use in Mb before swapping. 0 for unlimited
+--force-kid             		Force the UI mode to be Kid
+--force-kiosk           		Force the UI mode to be Kiosk
+--force-disable-filters         Force the UI to ignore applied filters in gamelist
+--home							Force the .emulationstation folder (windows)
+--help, -h                      summon a sentient, angry tuba
 ```
 
 As long as ES hasn't frozen, you can always press F4 to close the application.
@@ -138,44 +149,11 @@ The order EmulationStation displays systems reflects the order you define them i
 
 **NOTE:** A system *must* have at least one game present in its "path" directory, or ES will ignore it! If no valid systems are found, ES will report an error and quit!
 
-Here's an example es_systems.cfg:
 
-```xml
-<!-- This is the EmulationStation Systems configuration file.
-All systems must be contained within the <systemList> tag.-->
 
-<systemList>
-	<!-- Here's an example system to get you started. -->
-	<system>
-		<!-- A short name, used internally. -->
-		<name>snes</name>
+See [SYSTEMS.md](SYSTEMS.md) for some live examples in EmulationStation.
 
-		<!-- A "pretty" name, displayed in the menus and such. This one is optional. -->
-		<fullname>Super Nintendo Entertainment System</fullname>
 
-		<!-- The path to start searching for ROMs in. '~' will be expanded to $HOME or %HOMEPATH%, depending on platform.
-		All subdirectories (and non-recursive links) will be included. -->
-		<path>~/roms/snes</path>
-
-		<!-- A list of extensions to search for, delimited by any of the whitespace characters (", \r\n\t").
-		You MUST include the period at the start of the extension! It's also case sensitive. -->
-		<extension>.smc .sfc .SMC .SFC</extension>
-
-		<!-- The shell command executed when a game is selected. A few special tags are replaced if found in a command, like %ROM% (see below). -->
-		<command>snesemulator %ROM%</command>
-		<!-- This example would run the bash command "snesemulator /home/user/roms/snes/Super\ Mario\ World.sfc". -->
-
-		<!-- The platform(s) to use when scraping. You can see the full list of accepted platforms in src/PlatformIds.cpp.
-		It's case sensitive, but everything is lowercase. This tag is optional.
-		You can use multiple platforms too, delimited with any of the whitespace characters (", \r\n\t"), eg: "genesis, megadrive" -->
-		<platform>snes</platform>
-
-		<!-- The theme to load from the current theme set. See THEMES.md for more information.
-		This tag is optional; if not set, it will use the value of <name>. -->
-		<theme>snes</theme>
-	</system>
-</systemList>
-```
 
 The following "tags" are replaced by ES in launch commands:
 
@@ -185,7 +163,13 @@ The following "tags" are replaced by ES in launch commands:
 
 `%ROM_RAW%`	- Replaced with the unescaped, absolute path to the selected ROM.  If your emulator is picky about paths, you might want to use this instead of %ROM%, but enclosed in quotes.
 
-See [SYSTEMS.md](SYSTEMS.md) for some live examples in EmulationStation.
+`%HOME%`	- Replaced with the home folder.
+
+`%SYSTEM%`	- Replaced with the current selected system name.
+
+`%EMULATOR%`	- Replaced with the current selected emulator.
+
+`%CORE%`	- Replaced with the current selected core.
 
 gamelist.xml
 ============
@@ -213,11 +197,3 @@ Themes
 
 By default, EmulationStation looks pretty ugly. You can fix that. If you want to know more about making your own themes (or editing existing ones), read [THEMES.md](THEMES.md)!
 
-I've put some themes up for download on my EmulationStation webpage: http://aloshi.com/emulationstation#themes
-
-If you're using RetroPie, you should already have a nice set of themes automatically installed!
-
-
--Alec "Aloshi" Lofquist
-http://www.aloshi.com
-http://www.emulationstation.org

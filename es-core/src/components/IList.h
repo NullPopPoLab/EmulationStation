@@ -1,12 +1,13 @@
 #pragma once
+#ifndef ES_CORE_COMPONENTS_ILIST_H
+#define ES_CORE_COMPONENTS_ILIST_H
 
-#include <string>
-#include <vector>
-#include <memory>
-#include "GuiComponent.h"
 #include "components/ImageComponent.h"
+#include "utils/StringUtil.h"
 #include "resources/Font.h"
-#include "Renderer.h"
+#include "PowerSaver.h"
+#include "ThemeData.h"
+#include <vector>
 
 enum CursorState
 {
@@ -36,14 +37,15 @@ struct ScrollTierList
 // default scroll tiers
 const ScrollTier QUICK_SCROLL_TIERS[] = {
 	{500, 500},
-	{5000, 114},
-	{0, 8}
+	{2000, 114},
+	{4000, 32},
+	{0, 16}
 };
-const ScrollTierList LIST_SCROLL_STYLE_QUICK = { 3, QUICK_SCROLL_TIERS };
+const ScrollTierList LIST_SCROLL_STYLE_QUICK = { 4, QUICK_SCROLL_TIERS };
 
 const ScrollTier SLOW_SCROLL_TIERS[] = {
 	{500, 500},
-	{0, 150}
+	{0, 200}
 };
 const ScrollTierList LIST_SCROLL_STYLE_SLOW = { 2, SLOW_SCROLL_TIERS };
 
@@ -90,7 +92,8 @@ public:
 		mTitleOverlayOpacity = 0x00;
 		mTitleOverlayColor = 0xFFFFFF00;
 		mGradient.setResize((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight());
-		mGradient.setImage(":/scroll_gradient.png");
+		mGradient.setImage(ThemeData::getMenuTheme()->Background.fadePath); // ":/scroll_gradient.png"
+		
 		mTitleOverlayFont = Font::get(FONT_SIZE_LARGE);
 	}
 
@@ -99,11 +102,46 @@ public:
 		return (mScrollVelocity != 0 && mScrollTier > 0);
 	}
 
+	int getScrollingVelocity() 
+	{
+		return mScrollVelocity;
+	}
+
 	void stopScrolling()
 	{
 		listInput(0);
 		onCursorChanged(CURSOR_STOPPED);
 	}
+
+	virtual void onHide() override
+	{
+		GuiComponent::onHide();
+
+		if (isScrolling())
+			stopScrolling();
+	}
+
+	// batocera
+	void setCursorIndex(int index, bool force = false)
+	{
+		if (mCursor == index && !force)
+			return;
+
+		if(index >= 0 && index < (int)mEntries.size()) 
+		{
+			mCursor = onBeforeScroll(index, 1);			
+
+			listInput(0);
+			onCursorChanged(CURSOR_STOPPED);
+		}
+	}
+
+	// batocera
+	int getCursorIndex()
+	{
+		return mCursor;
+	}
+
 
 	void clear()
 	{
@@ -125,21 +163,21 @@ public:
 		return mEntries.at(mCursor).object;
 	}
 
-	void setCursor(typename std::vector<Entry>::iterator& it)
+	void setCursor(typename std::vector<Entry>::const_iterator& it)
 	{
-		assert(it != mEntries.end());
-		mCursor = it - mEntries.begin();
+		assert(it != mEntries.cend());
+		mCursor = it - mEntries.cbegin();
 		onCursorChanged(CURSOR_STOPPED);
 	}
 
 	// returns true if successful (select is in our list), false if not
 	bool setCursor(const UserData& obj)
 	{
-		for(auto it = mEntries.begin(); it != mEntries.end(); it++)
+		for(auto it = mEntries.cbegin(); it != mEntries.cend(); it++)
 		{
 			if((*it).object == obj)
 			{
-				mCursor = it - mEntries.begin();
+				mCursor = (int)(it - mEntries.cbegin());
 				onCursorChanged(CURSOR_STOPPED);
 				return true;
 			}
@@ -147,7 +185,21 @@ public:
 
 		return false;
 	}
-	
+
+	typename std::vector<Entry>::iterator findEntry(const UserData& obj)
+	{
+		for (auto it = mEntries.begin(); it != mEntries.end(); it++)
+			if ((*it).object == obj)
+				return it;
+
+		return mEntries.end();
+	}
+
+	typename std::vector<Entry>::iterator end()
+	{
+		return mEntries.end();
+	}
+
 	// entry management
 	void add(const Entry& e)
 	{
@@ -156,7 +208,7 @@ public:
 
 	bool remove(const UserData& obj)
 	{
-		for(auto it = mEntries.begin(); it != mEntries.end(); it++)
+		for(auto it = mEntries.cbegin(); it != mEntries.cend(); it++)
 		{
 			if((*it).object == obj)
 			{
@@ -168,12 +220,21 @@ public:
 		return false;
 	}
 
-	inline int size() const { return mEntries.size(); }
+	inline int size() const { return (int)mEntries.size(); }
+
+	inline std::vector<UserData> getObjects()
+	{
+		std::vector<UserData> objects;
+		for (auto it = mEntries.begin(); it != mEntries.end(); it++)
+			objects.push_back((*it).object);
+		
+		return objects;
+	}
 
 protected:
-	void remove(typename std::vector<Entry>::iterator& it)
+	void remove(typename std::vector<Entry>::const_iterator& it)
 	{
-		if(mCursor > 0 && it - mEntries.begin() <= mCursor)
+		if(mCursor > 0 && it - mEntries.cbegin() <= mCursor)
 		{
 			mCursor--;
 			onCursorChanged(CURSOR_STOPPED);
@@ -185,17 +246,26 @@ protected:
 
 	bool listInput(int velocity) // a velocity of 0 = stop scrolling
 	{
+		PowerSaver::lock(velocity == 0);
+
+		bool sendCursorChanged = false;
+
 		// generate an onCursorChanged event in the stopped state when the user lets go of the key
-		if(velocity == 0 && mScrollVelocity != 0)
-			onCursorChanged(CURSOR_STOPPED);
+		if (velocity == 0 && mScrollVelocity != 0)
+			sendCursorChanged = true; // onCursorChanged(CURSOR_STOPPED);
 
 		mScrollVelocity = velocity;
 		mScrollTier = 0;
 		mScrollTierAccumulator = 0;
 		mScrollCursorAccumulator = 0;
-
+		
 		int prevCursor = mCursor;
-		scroll(mScrollVelocity);
+
+		if (sendCursorChanged)
+			onCursorChanged(CURSOR_STOPPED);
+		else
+			scroll(mScrollVelocity);
+
 		return (prevCursor != mCursor);
 	}
 
@@ -238,19 +308,42 @@ protected:
 			scroll(mScrollVelocity);
 	}
 
-	void listRenderTitleOverlay(const Eigen::Affine3f& trans)
+	void listRenderTitleOverlay(const Transform4x4f& /*trans*/)
 	{
 		if(size() == 0 || !mTitleOverlayFont || mTitleOverlayOpacity == 0)
 			return;
 
 		// we don't bother caching this because it's only two letters and will change pretty much every frame if we're scrolling
-		const std::string text = getSelectedName().size() >= 2 ? getSelectedName().substr(0, 2) : "??";
+		// const std::string text = getSelectedName().size() >= 2 ? getSelectedName().substr(0, 2) : "??";
+		
+		const std::string source = getSelectedName();
 
-		Eigen::Vector2f off = mTitleOverlayFont->sizeText(text);
+		std::string text;
+
+		int count = 0;
+		size_t i = 0;
+		while (i < source.length())
+		{
+			int unicode = Utils::String::chars2Unicode(source, i); // advances i
+			text += Utils::String::unicode2Chars(unicode);
+
+			//  three+ byte character
+			if (unicode >= 0x800)
+				break;
+
+			count++;
+			if (count == 2)
+				break;
+		}
+
+		if (text.empty())
+			text = "??";
+
+		Vector2f off = mTitleOverlayFont->sizeText(text);
 		off[0] = (Renderer::getScreenWidth() - off.x()) * 0.5f;
 		off[1] = (Renderer::getScreenHeight() - off.y()) * 0.5f;
 		
-		Eigen::Affine3f identTrans = Eigen::Affine3f::Identity();
+		Transform4x4f identTrans = Transform4x4f::Identity();
 
 		mGradient.setOpacity(mTitleOverlayOpacity);
 		mGradient.render(identTrans);
@@ -292,6 +385,9 @@ protected:
 				cursor -= size();
 		}
 
+		if (amt != 0)
+			cursor = onBeforeScroll(cursor, amt > 0 ? 1 : -1);
+
 		if(cursor != mCursor)
 			onScroll(absAmt);
 
@@ -299,6 +395,11 @@ protected:
 		onCursorChanged((mScrollTier > 0) ? CURSOR_SCROLLING : CURSOR_STOPPED);
 	}
 
-	virtual void onCursorChanged(const CursorState& state) {}
-	virtual void onScroll(int amt) {}
+
+	virtual void onCursorChanged(const CursorState& /*state*/) {}
+	virtual void onScroll(int /*amt*/) {}
+
+	virtual int onBeforeScroll(int cursor, int direction) { return cursor; }
 };
+
+#endif // ES_CORE_COMPONENTS_ILIST_H

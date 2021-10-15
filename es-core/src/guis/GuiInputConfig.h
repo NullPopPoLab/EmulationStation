@@ -1,11 +1,22 @@
 #pragma once
+#ifndef ES_CORE_GUIS_GUI_INPUT_CONFIG_H
+#define ES_CORE_GUIS_GUI_INPUT_CONFIG_H
 
-#include "GuiComponent.h"
-#include "components/NinePatchComponent.h"
+#include "components/BusyComponent.h"
 #include "components/ComponentGrid.h"
-#include "components/ComponentList.h"
+#include "components/NinePatchComponent.h"
+#include "GuiComponent.h"
 
+class ComponentList;
 class TextComponent;
+
+struct InputConfigStructure
+{
+	std::string name;
+	bool		skippable;
+	std::string dispName;
+	std::string icon;
+};
 
 class GuiInputConfig : public GuiComponent
 {
@@ -25,6 +36,7 @@ private:
 
 	bool assign(Input input, int inputId);
 	void clearAssignment(int inputId);
+	bool filterTrigger(Input input, InputConfig* config);
 
 	void rowDone();
 
@@ -46,4 +58,11 @@ private:
 	Input mHeldInput;
 	int mHeldTime;
 	int mHeldInputId;
+
+	BusyComponent mBusyAnim;	
+
+	void initInputConfigStructure();
+	std::vector<InputConfigStructure> GUI_INPUT_CONFIG_LIST;
 };
+
+#endif // ES_CORE_GUIS_GUI_INPUT_CONFIG_H

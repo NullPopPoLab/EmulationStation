@@ -1,24 +1,40 @@
 #include "components/ButtonComponent.h"
-#include "Renderer.h"
-#include "Window.h"
-#include "Util.h"
-#include "Log.h"
+#include "resources/Font.h"
+#include "utils/StringUtil.h"
+#include "LocaleES.h"
+#include "TextToSpeech.h"
 
-ButtonComponent::ButtonComponent(Window* window, const std::string& text, const std::string& helpText, const std::function<void()>& func) : GuiComponent(window),
-	mBox(window, ":/button.png"),
-	mFont(Font::get(FONT_SIZE_MEDIUM)), 
+#define TEXT_PADDING Math::max(12, Renderer::getScreenWidth() * 0.014)
+
+ButtonComponent::ButtonComponent(Window* window, const std::string& text, const std::string& helpText, const std::function<void()>& func, bool upperCase) : GuiComponent(window),
+	mBox(window, ThemeData::getMenuTheme()->Button.path),	
 	mFocused(false), 
-	mEnabled(true), 
-	mTextColorFocused(0xFFFFFFFF), mTextColorUnfocused(0x777777FF)
+	mEnabled(true),
+	mPadding(Vector4f(0, 0, 0, 0))
 {
-	setPressedFunc(func);
-	setText(text, helpText);
+	auto menuTheme = ThemeData::getMenuTheme();
+
+	mFont = menuTheme->Text.font;
+	mTextColorUnfocused = menuTheme->Text.color;
+	mTextColorFocused = menuTheme->Text.selectedColor;
+	mColor = menuTheme->Text.color;
+	mColorFocused = menuTheme->Text.selectorColor;
+	mBox.setCornerSize(menuTheme->Button.cornerSize);
+	mRenderNonFocusedBackground = true;
+
+	mPressedFunc = func;
+	setText(text, helpText, upperCase);
 	updateImage();
 }
 
 void ButtonComponent::onSizeChanged()
 {
-	mBox.fitTo(mSize, Eigen::Vector3f::Zero(), Eigen::Vector2f(-32, -32));
+	auto sz = mBox.getCornerSize();
+
+	mBox.fitTo(
+		Vector2f(mSize.x() - mPadding.x() - mPadding.z(), mSize.y() - mPadding.y() - mPadding.w()), 
+		Vector3f(mPadding.x(), mPadding.y()), 
+		Vector2f(-sz.x() * 2, -sz.y() * 2));
 }
 
 void ButtonComponent::setPressedFunc(std::function<void()> f)
@@ -28,37 +44,47 @@ void ButtonComponent::setPressedFunc(std::function<void()> f)
 
 bool ButtonComponent::input(InputConfig* config, Input input)
 {
-	if(config->isMappedTo("a", input) && input.value != 0)
+	if (config->isMappedTo(BUTTON_OK, input) && input.value != 0)
 	{
-		if(mPressedFunc && mEnabled)
+		if (mPressedFunc && mEnabled)
 			mPressedFunc();
+
 		return true;
 	}
 
 	return GuiComponent::input(config, input);
 }
 
-void ButtonComponent::setText(const std::string& text, const std::string& helpText)
+void ButtonComponent::setText(const std::string& text, const std::string& helpText, bool upperCase)
 {
-	mText = strToUpper(text);
+	mText = upperCase ? Utils::String::toUpper(text) : text;
 	mHelpText = helpText;
 	
 	mTextCache = std::unique_ptr<TextCache>(mFont->buildTextCache(mText, 0, 0, getCurTextColor()));
 
-	float minWidth = mFont->sizeText("DELETE").x() + 12;
-	setSize(std::max(mTextCache->metrics.size.x() + 12, minWidth), mTextCache->metrics.size.y());
+	float padding = TEXT_PADDING;
+	float minWidth = mFont->sizeText("DELETE").x() + padding;
+	setSize(Math::max(mTextCache->metrics.size.x() + padding, minWidth), mTextCache->metrics.size.y());
 
 	updateHelpPrompts();
 }
 
 void ButtonComponent::onFocusGained()
 {
+	if (mFocused)
+		return;
+
 	mFocused = true;
 	updateImage();
+
+	TextToSpeech::getInstance()->say(mText, true);
 }
 
 void ButtonComponent::onFocusLost()
 {
+	if (!mFocused)
+		return;
+
 	mFocused = false;
 	updateImage();
 }
@@ -71,7 +97,7 @@ void ButtonComponent::setEnabled(bool enabled)
 
 void ButtonComponent::updateImage()
 {
-	if(!mEnabled || !mPressedFunc)
+	if (!mEnabled || !mPressedFunc)
 	{
 		mBox.setImagePath(":/button_filled.png");
 		mBox.setCenterColor(0x770000FF);
@@ -79,21 +105,34 @@ void ButtonComponent::updateImage()
 		return;
 	}
 
-	mBox.setCenterColor(0xFFFFFFFF);
-	mBox.setEdgeColor(0xFFFFFFFF);
-	mBox.setImagePath(mFocused ? ":/button_filled.png" : ":/button.png");
+	if (mNewColor)
+	{
+		mBox.setImagePath(ThemeData::getMenuTheme()->Button.filledPath);
+		mBox.setCenterColor(mModdedColor);
+		mBox.setEdgeColor(mModdedColor);
+		return;
+	}
+
+	mBox.setCenterColor(getCurBackColor());
+	mBox.setEdgeColor(getCurBackColor());
+	mBox.setImagePath(mFocused ? ThemeData::getMenuTheme()->Button.filledPath : ThemeData::getMenuTheme()->Button.path);
 }
 
-void ButtonComponent::render(const Eigen::Affine3f& parentTrans)
+void ButtonComponent::render(const Transform4x4f& parentTrans)
 {
-	Eigen::Affine3f trans = roundMatrix(parentTrans * getTransform());
-	
-	mBox.render(trans);
+	Transform4x4f trans = parentTrans * getTransform();
+
+	if (mRenderNonFocusedBackground || mFocused)
+		mBox.render(trans);
+	else
+	{
+		Renderer::setMatrix(trans);
+		Renderer::drawRect(mPadding.x(), mPadding.y(), mSize.x() - mPadding.x() - mPadding.z(), mSize.y() - mPadding.y() - mPadding.w(), 0x60606025);
+	}
 
 	if(mTextCache)
 	{
-		Eigen::Vector3f centerOffset((mSize.x() - mTextCache->metrics.size.x()) / 2, (mSize.y() - mTextCache->metrics.size.y()) / 2, 0);
-		centerOffset = roundVector(centerOffset);
+		Vector3f centerOffset((mSize.x() - mTextCache->metrics.size.x()) / 2, (mSize.y() - mTextCache->metrics.size.y()) / 2, 0);
 		trans = trans.translate(centerOffset);
 
 		Renderer::setMatrix(trans);
@@ -107,15 +146,26 @@ void ButtonComponent::render(const Eigen::Affine3f& parentTrans)
 
 unsigned int ButtonComponent::getCurTextColor() const
 {
-	if(!mFocused)
-		return mTextColorUnfocused;
-	else
-		return mTextColorFocused;
+	return mFocused ? mTextColorFocused : mTextColorUnfocused;
+}
+
+unsigned int ButtonComponent::getCurBackColor() const
+{
+	return mFocused ? mColorFocused : mColor;
 }
 
 std::vector<HelpPrompt> ButtonComponent::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
-	prompts.push_back(HelpPrompt("a", mHelpText.empty() ? mText.c_str() : mHelpText.c_str()));
+	prompts.push_back(HelpPrompt(BUTTON_OK, mHelpText.empty() ? mText.c_str() : mHelpText.c_str())); // batocera
 	return prompts;
+}
+
+void ButtonComponent::setPadding(const Vector4f padding)
+{
+	if (mPadding == padding)
+		return;
+
+	mPadding = padding;
+	onSizeChanged();
 }

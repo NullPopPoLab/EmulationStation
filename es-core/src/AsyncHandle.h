@@ -1,4 +1,8 @@
 #pragma once
+#ifndef ES_CORE_ASYNC_HANDLE_H
+#define ES_CORE_ASYNC_HANDLE_H
+
+#include <string>
 
 enum AsyncHandleStatus
 {
@@ -11,13 +15,17 @@ enum AsyncHandleStatus
 class AsyncHandle
 {
 public:
-	AsyncHandle() : mStatus(ASYNC_IN_PROGRESS) {};
+	AsyncHandle() : mStatus(ASYNC_IN_PROGRESS), mErrorCode(200) {};
 	virtual ~AsyncHandle() {};
 
 	virtual void update() = 0;
 
 	// Update and return the latest status.
 	inline AsyncHandleStatus status() { update(); return mStatus; }
+
+	virtual int getPercent() { return -1; }
+
+	int getErrorCode() { return mErrorCode; }
 
 	// User-friendly string of our current status.  Will return error message if status() == SEARCH_ERROR.
 	inline std::string getStatusString()
@@ -37,8 +45,13 @@ public:
 
 protected:
 	inline void setStatus(AsyncHandleStatus status) { mStatus = status; }
-	inline void setError(const std::string& error) { setStatus(ASYNC_ERROR); mError = error; }
 
+	inline void setError(const std::string& error) { setStatus(ASYNC_ERROR); mError = error; }
+	inline void setError(int errorCode, const std::string& error) { setStatus(ASYNC_ERROR); mError = error; mErrorCode = errorCode; }
+
+	int mErrorCode;
 	std::string mError;
 	AsyncHandleStatus mStatus;
 };
+
+#endif // ES_CORE_ASYNC_HANDLE_H
