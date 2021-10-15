@@ -29,3 +29,6 @@ CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
 Makefile
+/.vs
+*.vcxproj.filters
+*.vcxproj.user
