@@ -12,10 +12,10 @@
 
 ## ブランチ説明
 
-master: 派生元の更新捕捉用 
-MyCustom: ここでの各種変更点をマージしたもの
+- master: 派生元の更新捕捉用 
+- MyCustom: ここでの各種変更点をマージしたもの
 
 ### 差分管理ブランチ
 
-BatoceraCustom: batocera版ソース捕捉用 (ビルド確認対象外)
-ForVisualStudio2019: cmake捨ててベタslnで構成管理 個人環境差は各自で直して系なやつ
+- BatoceraCustom: batocera版ソース捕捉用 (ビルド確認対象外)
+- ForVisualStudio2019: cmake捨ててベタslnで構成管理 個人環境差は各自で直して系なやつ
