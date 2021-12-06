@@ -1,8 +1,3 @@
-# NullPopPo-Custom
-[詳細](https://github.com/NullPopPoLab/EmulationStation/blob/master/!NullPopPo-Custom.md)
-
-以下、fork元
----
 EmulationStation
 ================
 
